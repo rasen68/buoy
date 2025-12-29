@@ -38,8 +38,27 @@
 
 )
 
+(defn make-get-value-wrapper [args sock]
+	#add the value (path) to the end of the args array
+	#if an arg was specified, it is assumed to be relative to the current directory
+	#there is currently no error checking to determine if the path actually exists
+	
+	#remove any args after the key
+	(def newargs (array/slice args 0 3)) 
 
-(defn makebuoywrapper [args sock]
+	(var appendpath "")
+	(when (>= (length args) 4) 
+		#we have to append it to cwd
+		(set appendpath (get args 3) ) 
+	)
+	(array/push newargs 
+		(string (os/cwd) "/" appendpath )
+	)
+
+	(prepare-and-send newargs sock)		
+)
+
+(defn make-check-valid-key-wrapper [args sock]
 	#this function will check that a make command (buoy -m) has a key that fulfills the criteria
 	#(def validpeg (regex/compile "^[a-zA-Z0-9,._+:@%/-]*$" ) )
 	(def validpeg
@@ -61,7 +80,7 @@
 		(do 
 			(def buoy-key (get args 2 ) )
 			(if (peg/match validpeg buoy-key )
-				(prepare-and-send args sock )
+				(make-get-value-wrapper args sock )
 				(string "echo \"Error: key " buoy-key " contains special characters.  Please use a different key\" >&2")
 			)
 		)
@@ -74,7 +93,7 @@
 (defn checkopt [msock esock] 
 	(let [args (dyn :args)]
 		(case (get args 1)
-			"-m" (makebuoywrapper args msock )
+			"-m" (make-check-valid-key-wrapper args msock )
 			"-e" (prepare-and-send args esock )
 			"-c" (usage 0) #unimplemented as of yet
 			"-h" (usage 0)
