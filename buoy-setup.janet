@@ -188,6 +188,10 @@
 			(def out @[])
 
 			(each arg args
+				#error status variables that we will check at the end of the run
+				(var errorstatus false)
+				(var errorstring "")
+
 				# check if we have asked for an arg
 				(var outarg arg)
 				(when (= (string/slice arg 0 1) "@" ) 
@@ -212,17 +216,33 @@
 										(set slashind (length arg))
 										(set secondhalf (string/slice arg slashind) )
 									)
-									(string
-										# remove the @
-										(buoys (string/slice arg 1 slashind ) )
-										# rest of the arg if additional is given
-										secondhalf
+									(def buoyname (string/slice arg 1 slashind ) )
+									(if (get buoys buoyname) 
+										(string
+											# remove the @
+											(get buoys buoyname )
+											# rest of the arg if additional is given
+											secondhalf
+										)
+										(do
+											(set errorstatus true)
+											(set errorstring 
+												(string "echo \"Error: No key @" buoyname " found in table \" >&2")
+											)
+										)
 									)
 								)
 							)
 						)
 					)
 				)	
+				
+				#if we encountered an error, break out of this loop and wait for another item on channel
+				(when errorstatus
+					(ev/give sub-send errorstring)	
+					(break)
+				)
+
 				#without @, it is the users responsibility to do the escaping
 				(array/push out outarg) 
 			)
