@@ -65,35 +65,18 @@
 (defn substitute [argstring send recv ]
 	#argument delimiter created by sending routine
 	(var args (string/split " \\ " argstring))
-	(def out @[])
 
-	(each arg args
-		(var truearg (string/replace-all "\\\\" "\\" arg ) )
-		# check if we have asked for an arg
-		(when (= (string/slice truearg 0 1) "@" ) 
-
-			# allow for escape string (@@ escapes the entirety of its arg)
-			(set truearg 
-				(escape-string 
-					(if (= (string/slice truearg 1 2) "@" ) 
-				
-				#escape the whole arg
-				 (string/slice truearg 2 )
-
-				#else, dereference the arg 
-				#(temp putting args in brackets)
-				#these should also be fully escaped
-				(string "{" (string/slice truearg 1) "}" )
-					)
-				)
+	(def trueargs 
+		(map 
+			(fn [x] 
+				(string/replace-all "\\\\" "\\" x )
 			)
-		)	
-		#without @, it is the users responsibility to do the escaping
-		(array/push out truearg) 
+		args
+		)
 	)
-		
-	# return args joined as a statement
-	(string/join out " ")
+
+	(ev/give send trueargs)
+	(ev/take recv)
 )
 
 
@@ -153,47 +136,110 @@
 
 	(var buoys (decode-json-if-exists tablepath ) )	
 
-	(forever
-		#table of form {:key k :value v}
-		(var item (ev/take make-recv ) )
-		(def newkey (get item 0 ) )
-		(def newvalue (get item 1 ) )
+	# buoy table substituter and updater functions are run as seperate fibers,
+	# but need to be defined within this function so that they can access the
+	# buoy table (since buoy table is not global)
+	
+	(defn updater [] 
+		(forever
+			#table of form {:key k :value v}
+			(var item (ev/take make-recv ) )
+			(def newkey (get item 0 ) )
+			(def newvalue (get item 1 ) )
 
-		(var return-msg 
-			(string 
-				"echo \" Successfully added key @"
-				newkey
-				" with value " 
-				newvalue
-				" to table\"" 
-			) 
-		)
-		
-		(when (get buoys newkey)
-			(set return-msg
-				(string
-					"echo \" Warning: key @"
+			(var return-msg 
+				(string 
+					"echo \" Successfully added key @"
 					newkey
-					" already exists. Replaced old value ("
-					(get buoys newkey)
-					") with new value ("
+					" with value " 
 					newvalue
-					")\""
+					" to table\"" 
+				) 
+			)
+			
+			(when (get buoys newkey)
+				(set return-msg
+					(string
+						"echo \" Warning: key @"
+						newkey
+						" already exists. Replaced old value ("
+						(get buoys newkey)
+						") with new value ("
+						newvalue
+						")\""
+					)
 				)
 			)
+
+			(put buoys (get item 0 ) (escape-string (get item 1 ) ) )
+
+			# write updated table to filesystem
+			(write-json-to-file buoys tablepath )
+			
+			#return string indicating success status
+			(ev/give make-send return-msg)	
 		)
+	)
 
+	(defn replacer [] 
+		(forever
+			#comes from substitute function as a list of all args in the script we need to replace
+			(def args (ev/take sub-recv))
+			(def out @[])
 
-		#(put item :value (escape-string (get item :value) ) )
-		(put buoys (get item 0 ) (escape-string (get item 1 ) ) )
+			(each arg args
+				# check if we have asked for an arg
+				(var outarg arg)
+				(when (= (string/slice arg 0 1) "@" ) 
 
-		# write table to filesystem
-		(write-json-to-file buoys tablepath )
+					# allow for escape string (@@ escapes the entirety of its arg)
+					(set outarg 
+						(escape-string 
+							(if (= (string/slice arg 1 2) "@" ) 
+						
+								#escape the whole arg
+								 (string/slice arg 2 )
+
+								#else, dereference the buoy
+								#buoys can be appended to by further files/filepaths.
+								#we will find the first instance of
+								#a /, and the buoy will be everything before that
+								(do
+									(var slashind (string/find "/" arg) )
+									#we will split at the end, i.e. the buoy is the entire string
+									(var secondhalf "")
+									(if (nil? slashind)
+										(set slashind (length arg))
+										(set secondhalf (string/slice arg slashind) )
+									)
+									(string
+										# remove the @
+										(buoys (string/slice arg 1 slashind ) )
+										# rest of the arg if additional is given
+										secondhalf
+									)
+								)
+							)
+						)
+					)
+				)	
+				#without @, it is the users responsibility to do the escaping
+				(array/push out outarg) 
+			)
+			
+			# return args joined as an expression
+			(ev/give sub-send (string/join out " ") )
+			
+		)	
+	)
+
+	(ev/go updater)
+	(ev/go replacer)
 		
-		#return string indicating success status
-		(ev/give make-send return-msg)	
-	)	
 )	
+
+
+
 
 #main routine
 
