@@ -171,7 +171,7 @@
 				)
 			)
 
-			(put buoys (get item 0 ) (escape-string (get item 1 ) ) )
+			(put buoys (get item 0 ) (get item 1 ) ) 
 
 			# write updated table to filesystem
 			(write-json-to-file buoys tablepath )
