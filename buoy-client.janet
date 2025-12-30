@@ -102,8 +102,10 @@
 	)
 )
 
-(def msock "/tmp/buoy-maker.socket")
-(def esock "/tmp/buoy-substitute.socket")
+(defn main [& args]
+	(def msock "/tmp/buoy-maker.socket")
+	(def esock "/tmp/buoy-substitute.socket")
 
-(print (checkopt msock esock ))
-
+	#don't pass in args, janet lets us get the args at any time via (dyn :args)
+	(print (checkopt msock esock))
+)

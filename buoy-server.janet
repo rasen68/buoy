@@ -1,32 +1,16 @@
 #!/usr/local/bin/janet
 
-# for testing, we should create input and output pipes / streams, and then fork to create a background process
 
-#include spork here as well?
-#should import sport instead of use spork to not clog namespace
-#(import sport)
 
-#this import is installed globally, and only really works if I shebang the script
-#in the future, I should configure a project.janet that works to compile this file with deps
-#(import sh)
 (use sh)
 (import spork/json)
 
-#stupid unnamed pipes
-#these are bound to this jaet event loop, and are not storeed on disk (other processes can't access)
-#(def (janet_recv janet_send ) (os/pipe))
-
-# communications between just janet event loop called processes should be done in channels
-
-(defn surround [data surround]
-	(string surround data surround)
-)
 
 
-# make named pipe with full permissions, @name should be a path in /tmp 
+# make a socket with full permissions, @name should be a path in /tmp 
 (defn make-socket [name] 
 	#on linux we could use abstract uds but don't want to in case i have to use these on mingw at work (involves kernel)
-	#(net/connect :unix name) #client
+	#although I guess systemd dependancy removes that possibility anyway
 
 	(when (os/stat name) (os/rm name))
 
@@ -35,7 +19,6 @@
 	(os/chmod name 8r777) #For some reason pipes made from janet don't have default /tmp/ permissions
 	sock
 )
-
 
 # add necessary escape characters to a string if it is not interpreted to be a
 (defn escape-string [arg]
@@ -79,7 +62,6 @@
 	(ev/take recv)
 )
 
-
 (defn server-loop [sockname func send-chan recv-chan ]
 
 	(var buf @"")
@@ -103,7 +85,6 @@
 	(var args (string/split " \\ " argstring))
 
 	#2 args enforced by client routine
-	#(def t {:key (get args 0 ) :value (get args 1) } )
 	(ev/give send args)
 
 	# return the string from table manager, which
@@ -253,25 +234,26 @@
 		)	
 	)
 
+	# These need to be sepereate fibers so one does not block
+	# the event loop getting to the other
 	(ev/go updater)
 	(ev/go replacer)
 		
 )	
 
+(defn main [& args] 
 
+	(def makesockname "/tmp/buoy-maker.socket")
+	(def subsockname "/tmp/buoy-substitute.socket")
 
+	#make channels for communicating with the table manager
+	(def make-in (ev/chan 5 ) )
+	(def make-out (ev/chan 5) )
+	(def sub-in (ev/chan 5 ) )
+	(def sub-out (ev/chan 5) )
 
-#main routine
+	(ev/go |(server-loop makesockname addkey make-in make-out )  )
+	(ev/go |(server-loop subsockname substitute sub-in sub-out ) )
+	(ev/go |(table-manager make-in make-out sub-in sub-out ) ) 
 
-(def makesockname "/tmp/buoy-maker.socket")
-(def subsockname "/tmp/buoy-substitute.socket")
-
-#make channels for communicating with the table manager
-(def make-in (ev/chan 5 ) )
-(def make-out (ev/chan 5) )
-(def sub-in (ev/chan 5 ) )
-(def sub-out (ev/chan 5) )
-
-(ev/go |(server-loop makesockname addkey make-in make-out )  )
-(ev/go |(server-loop subsockname substitute sub-in sub-out ) )
-(ev/go |(table-manager make-in make-out sub-in sub-out ) ) 
+)
