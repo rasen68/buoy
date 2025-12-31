@@ -7,12 +7,12 @@
 
 (declare-executable
 	:name "buoy-client"
-	:entry "buoy-client.janet"
+	:entry "src/buoy-client.janet"
 )
 
 (declare-executable
 	:name "buoy-server"
-	:entry "buoy-server.janet"
+	:entry "src/buoy-server.janet"
 )
 
 

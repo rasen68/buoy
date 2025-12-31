@@ -2,7 +2,7 @@
 all: exe daemon bashfunction
 
 .PHONY: exe
-exe: buoy-server.janet buoy-client.janet 
+exe: src/buoy-server.janet src/buoy-client.janet 
 	sudo jpm deps
 	jpm build
 	mkdir -p "${HOME}/.buoy/bin"
@@ -10,18 +10,18 @@ exe: buoy-server.janet buoy-client.janet
 	sudo cp "build/buoy-server" "/usr/local/bin/"
 
 .PHONY: daemon
-daemon: buoy-server.service
+daemon: systemd/buoy-server.service
 	mkdir -p "${HOME}/.config/systemd/user"
-	cp buoy-server.service "${HOME}/.config/systemd/user"
+	cp "systemd/buoy-server.service" "${HOME}/.config/systemd/user"
 	systemctl --user enable buoy-server #set to launch on boot
 	systemctl --user start buoy-server #launch right now!
 
 .PHONY: bashfunction
-bashfunction: buoy-interface.sh
+bashfunction: scripts/buoy-interface.sh scripts/bashrc-install.sh
 	mkdir -p "${HOME}/.local/share/buoy/"	
-	cp "buoy-interface.sh" "${HOME}/.local/share/buoy/"	
+	cp "scripts/buoy-interface.sh" "${HOME}/.local/share/buoy/"	
 	#add line in bashrc sourcing this function
-	bash bashrc-install.sh
+	bash "scripts/bashrc-install.sh"
 	
 # will not remove anything from bashrc
 .PHONY: clean
