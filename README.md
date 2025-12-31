@@ -88,6 +88,9 @@ $ make clean
 ## Purpose
 This program mostly exists for me to practice programming in janet-lang and daemonization.  There are much more apt ways to implement the described functionality.  However, in the case of this program, the structure will not be changing.
 
+## Known Bugs
+running buoy -e or buoy -c without any args causes them to fail forever
+
 ## Todo
 - It would be nice to use janet-lang's C FFI to implement forking daemonization on machines not managed by systemd.
 - Update / Uninstall scripts
