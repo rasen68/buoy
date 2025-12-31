@@ -88,13 +88,17 @@
 	)
 )
 
+(defn send-cd [args sock]
+	(prepare-and-send [ "dummy" "dummy" "cd" (string "@" (get args 2) ) ] sock)
+)
+
 #not robust option checking because i suck
 (defn checkopt [msock esock] 
 	(let [args (dyn :args)]
 		(case (get args 1)
 			"-m" (make-check-valid-key-wrapper args msock )
 			"-e" (prepare-and-send args esock )
-			"-c" (usage 0) #unimplemented as of yet
+			"-c" (send-cd args esock)
 			"-h" (usage 0)
 			(usage 1) # got nothing
 		)
