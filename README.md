@@ -88,7 +88,11 @@ $ make clean
 ## Purpose
 This program mostly exists for me to practice programming in janet-lang and daemonization.  There are much more apt ways to implement the described functionality.  However, in the case of this program, the structure will not be changing.
 
+## Known bugs 
+The first time you use `$ buoy -c @buoy` on a buoy, it does not do anything.
+
 ## Todo
 - It would be nice to use janet-lang's C FFI to implement forking daemonization on machines not managed by systemd.
 - Update / Uninstall scripts
  - Some way to remove the managed section of ~/.bashrc would be nice 
+
