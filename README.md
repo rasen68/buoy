@@ -95,4 +95,5 @@ None at this time
 - It would be nice to use janet-lang's C FFI to implement forking daemonization on machines not managed by systemd.
 - Update / Uninstall scripts
  - Some way to remove the managed section of ~/.bashrc would be nice 
+- buoy -c with no more arguments should cd to $HOME
 
