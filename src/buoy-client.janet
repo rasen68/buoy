@@ -60,7 +60,10 @@
 		(set appendpath (get args 3) ) 
 	)
 	(array/push newargs 
-		(string (os/cwd) "/" appendpath )
+		(if (or (string/has-prefix? "/" appendpath) (string/has-prefix? "~" appendpath))
+			(string appendpath)
+			(string (os/cwd) "/" appendpath )
+		)
 	)
 
 	(prepare-and-send newargs sock)		
